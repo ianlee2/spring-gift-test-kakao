@@ -19,6 +19,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Sql(scripts = "classpath:test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class GiftAcceptanceTest {
 
+    private static final String MEMBER_ID_HEADER = "Member-Id";
+    private static final String GIFT_API_PATH = "/api/gifts";
+
     @LocalServerPort
     int port;
 
@@ -39,17 +42,8 @@ class GiftAcceptanceTest {
         long optionId = 1L;
 
         // when
-        ExtractableResponse<Response> response = RestAssured.given().log().all()
-                .contentType(ContentType.JSON)
-                .header("Member-Id", senderId)
-                .body(Map.of(
-                        "optionId", optionId,
-                        "quantity", 1,
-                        "receiverId", receiverId,
-                        "message", "생일 축하해!"
-                ))
-                .when().post("/api/gifts")
-                .then().log().all().extract();
+        ExtractableResponse<Response> response =
+                선물한다(senderId, receiverId, optionId, 1, "생일 축하해!");
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
@@ -69,33 +63,15 @@ class GiftAcceptanceTest {
         long optionId = 1L;
 
         // when — 재고 10개 전부 소진
-        ExtractableResponse<Response> firstResponse = RestAssured.given().log().all()
-                .contentType(ContentType.JSON)
-                .header("Member-Id", senderId)
-                .body(Map.of(
-                        "optionId", optionId,
-                        "quantity", 10,
-                        "receiverId", receiverId,
-                        "message", "전부 보낸다"
-                ))
-                .when().post("/api/gifts")
-                .then().log().all().extract();
+        ExtractableResponse<Response> firstResponse =
+                선물한다(senderId, receiverId, optionId, 10, "전부 보낸다");
 
         // then — 첫 번째 요청 성공
         assertThat(firstResponse.statusCode()).isEqualTo(200);
 
         // when — 같은 옵션에 1개 추가 요청
-        ExtractableResponse<Response> secondResponse = RestAssured.given().log().all()
-                .contentType(ContentType.JSON)
-                .header("Member-Id", senderId)
-                .body(Map.of(
-                        "optionId", optionId,
-                        "quantity", 1,
-                        "receiverId", receiverId,
-                        "message", "하나 더"
-                ))
-                .when().post("/api/gifts")
-                .then().log().all().extract();
+        ExtractableResponse<Response> secondResponse =
+                선물한다(senderId, receiverId, optionId, 1, "하나 더");
 
         // then — 두 번째 요청 실패 (재고 부족)
         assertThat(secondResponse.statusCode()).isEqualTo(500);
@@ -113,17 +89,8 @@ class GiftAcceptanceTest {
         long optionId = 2L; // 재고 1개
 
         // when
-        ExtractableResponse<Response> response = RestAssured.given().log().all()
-                .contentType(ContentType.JSON)
-                .header("Member-Id", senderId)
-                .body(Map.of(
-                        "optionId", optionId,
-                        "quantity", 2,
-                        "receiverId", receiverId,
-                        "message", "재고 초과 테스트"
-                ))
-                .when().post("/api/gifts")
-                .then().log().all().extract();
+        ExtractableResponse<Response> response =
+                선물한다(senderId, receiverId, optionId, 2, "재고 초과 테스트");
 
         // then
         assertThat(response.statusCode()).isEqualTo(500);
@@ -141,17 +108,8 @@ class GiftAcceptanceTest {
         long nonExistentOptionId = 9999L;
 
         // when
-        ExtractableResponse<Response> response = RestAssured.given().log().all()
-                .contentType(ContentType.JSON)
-                .header("Member-Id", senderId)
-                .body(Map.of(
-                        "optionId", nonExistentOptionId,
-                        "quantity", 1,
-                        "receiverId", receiverId,
-                        "message", "없는 옵션 테스트"
-                ))
-                .when().post("/api/gifts")
-                .then().log().all().extract();
+        ExtractableResponse<Response> response =
+                선물한다(senderId, receiverId, nonExistentOptionId, 1, "없는 옵션 테스트");
 
         // then
         assertThat(response.statusCode()).isEqualTo(500);
@@ -167,19 +125,44 @@ class GiftAcceptanceTest {
         long receiverId = 2L;
         long optionId = 1L;
 
-        // when — Member-Id 헤더 없이 요청
-        ExtractableResponse<Response> response = RestAssured.given().log().all()
-                .contentType(ContentType.JSON)
-                .body(Map.of(
-                        "optionId", optionId,
-                        "quantity", 1,
-                        "receiverId", receiverId,
-                        "message", "헤더 누락 테스트"
-                ))
-                .when().post("/api/gifts")
-                .then().log().all().extract();
+        // when
+        ExtractableResponse<Response> response =
+                선물한다_헤더없이(receiverId, optionId, 1, "헤더 누락 테스트");
 
         // then
         assertThat(response.statusCode()).isEqualTo(400);
+    }
+
+    // =========================
+    // Helper Methods (한글 DSL)
+    // =========================
+
+    private ExtractableResponse<Response> 선물한다(long senderId, long receiverId, long optionId, int quantity, String message) {
+        return RestAssured.given().log().all()
+                .contentType(ContentType.JSON)
+                .header(MEMBER_ID_HEADER, senderId)
+                .body(Map.of(
+                        "optionId", optionId,
+                        "quantity", quantity,
+                        "receiverId", receiverId,
+                        "message", message
+                ))
+                .when().post(GIFT_API_PATH)
+                .then().log().all()
+                .extract();
+    }
+
+    private ExtractableResponse<Response> 선물한다_헤더없이(long receiverId, long optionId, int quantity, String message) {
+        return RestAssured.given().log().all()
+                .contentType(ContentType.JSON)
+                .body(Map.of(
+                        "optionId", optionId,
+                        "quantity", quantity,
+                        "receiverId", receiverId,
+                        "message", message
+                ))
+                .when().post(GIFT_API_PATH)
+                .then().log().all()
+                .extract();
     }
 }

@@ -18,6 +18,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Sql(scripts = "classpath:cleanup.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class CategoryAcceptanceTest {
 
+    private static final String CATEGORY_API_PATH = "/api/categories";
+
     @LocalServerPort
     int port;
 
@@ -28,49 +30,59 @@ class CategoryAcceptanceTest {
 
     /**
      * C1: 카테고리를 생성하고 목록 조회에서 확인한다.
-     * - cleanup 후 빈 상태에서 시작 → ID 충돌 없음
-     * - POST /api/categories → 200 + id, name 존재
-     * - GET /api/categories → 방금 생성한 카테고리가 목록에 포함
      */
     @Test
     void 카테고리를_생성하고_목록에서_확인한다() {
-        // when — 카테고리 생성
-        ExtractableResponse<Response> createResponse = RestAssured.given().log().all()
-                .contentType(ContentType.JSON)
-                .body(Map.of("name", "디저트"))
-                .when().post("/api/categories")
-                .then().log().all().extract();
 
-        // then — 생성 응답 확인
+        // when — 카테고리 생성
+        ExtractableResponse<Response> createResponse = 카테고리를_생성_요청한다("디저트");
+
+        // then
         assertThat(createResponse.statusCode()).isEqualTo(200);
         assertThat(createResponse.jsonPath().getLong("id")).isNotNull();
         assertThat(createResponse.jsonPath().getString("name")).isEqualTo("디저트");
 
-        // when — 목록 조회로 생성 결과 검증 (시나리오 체이닝)
-        ExtractableResponse<Response> listResponse = RestAssured.given().log().all()
-                .when().get("/api/categories")
-                .then().log().all().extract();
+        // when — 목록 조회
+        ExtractableResponse<Response> listResponse = 카테고리_목록을_조회_요청한다();
 
-        // then — 목록에 방금 생성한 카테고리 포함
+        // then
         assertThat(listResponse.statusCode()).isEqualTo(200);
-        assertThat(listResponse.jsonPath().getList("name", String.class)).contains("디저트");
+        assertThat(listResponse.jsonPath().getList("name", String.class))
+                .contains("디저트");
     }
 
     /**
      * C2: 카테고리 목록을 조회한다.
-     * - test-data.sql로 준비된 2건(간식, 음료)이 조회된다.
      */
     @Test
     @Sql(scripts = "classpath:test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
     void 카테고리_목록을_조회한다() {
+
         // when
-        ExtractableResponse<Response> response = RestAssured.given().log().all()
-                .when().get("/api/categories")
-                .then().log().all().extract();
+        ExtractableResponse<Response> response = 카테고리_목록을_조회_요청한다();
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.jsonPath().getList("name", String.class))
                 .containsExactlyInAnyOrder("간식", "음료");
+    }
+
+    // =========================
+    // Helper Methods (HTTP 호출만 추출)
+    // =========================
+    private ExtractableResponse<Response> 카테고리를_생성_요청한다(String name) {
+        return RestAssured.given().log().all()
+                .contentType(ContentType.JSON)
+                .body(Map.of("name", name))
+                .when().post(CATEGORY_API_PATH)
+                .then().log().all()
+                .extract();
+    }
+
+    private ExtractableResponse<Response> 카테고리_목록을_조회_요청한다() {
+        return RestAssured.given().log().all()
+                .when().get(CATEGORY_API_PATH)
+                .then().log().all()
+                .extract();
     }
 }
