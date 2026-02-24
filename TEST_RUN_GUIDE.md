@@ -4,8 +4,9 @@
 현재 Gradle 설정 기준으로 테스트 태스크는 아래처럼 분리되어 있습니다.
 
 - `./gradlew test`: Cucumber BDD 테스트만 실행
-- `./gradlew cucumberTest`: PostgreSQL(Docker Compose) 기반 Cucumber 테스트 실행
+- `./gradlew cucumberTest`: Docker(App + PostgreSQL) 기반 Cucumber 테스트 실행
 - `./gradlew step1Test`: 기존 RestAssured 인수 테스트(1단계)만 실행
+- `./gradlew dockerBuild/dockerUp/dockerDown`: 애플리케이션 컨테이너 실행/종료
 
 ## 1) Cucumber 테스트 실행
 명령어:
@@ -24,7 +25,7 @@
 
 - `build.gradle`의 `test` 태스크 필터가 `gift.cucumber.CucumberTest`로 제한되어 있음
 
-## 2) PostgreSQL + Docker Compose 기반 Cucumber 실행
+## 2) Docker(App + PostgreSQL) 기반 Cucumber 실행
 명령어:
 
 ```bash
@@ -42,7 +43,24 @@
 - `build.gradle`의 `cucumberTest` 태스크 (`dependsOn dockerComposeUp`, `finalizedBy dockerComposeDown`)
 - `src/test/resources/application-test.properties`의 PostgreSQL 설정
 
-## 3) 1단계 인수 테스트 실행
+## 3) 컨테이너 실행(요구사항 3)
+명령어:
+
+```bash
+./gradlew dockerBuild
+./gradlew dockerUp
+curl http://localhost:28080/api/categories
+./gradlew cucumberTest
+./gradlew dockerDown
+```
+
+검증 포인트:
+
+- `docker compose ps`에서 `app`, `postgres`가 `healthy`
+- `curl http://localhost:28080/api/categories` 응답 확인
+- `curl http://localhost:28080`가 404인 것은 정상(루트 매핑 없음)
+
+## 4) 1단계 인수 테스트 실행
 명령어:
 
 ```bash
@@ -59,7 +77,7 @@
 
 - `build.gradle`의 `step1Test` 태스크 `includeTestsMatching` 필터
 
-## 4) 개별 테스트 클래스만 실행
+## 5) 개별 테스트 클래스만 실행
 특정 클래스만 실행할 때:
 
 ```bash
@@ -69,5 +87,5 @@
 
 ## 주의사항
 - `./gradlew test`는 기본 실행이며 Docker 없이 실행됩니다.
-- `./gradlew cucumberTest`는 PostgreSQL 컨테이너를 자동으로 올리고 내립니다.
+- `./gradlew cucumberTest`는 `dockerUp` 후 테스트를 실행하고 종료 시 `dockerDown`을 수행합니다.
 - Cucumber 시나리오는 `DatabaseCleanUp` 훅으로 시나리오마다 DB를 초기화합니다.
