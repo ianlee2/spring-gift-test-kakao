@@ -11,6 +11,7 @@
 ## 빠른 실행
 
 ```bash
-./gradlew test       # Cucumber BDD 테스트 실행
-./gradlew step1Test  # 기존 RestAssured 인수 테스트 실행
+./gradlew test         # Cucumber BDD 테스트 실행
+./gradlew cucumberTest # PostgreSQL + Docker Compose로 Cucumber 실행
+./gradlew step1Test    # 기존 RestAssured 인수 테스트 실행
 ```
