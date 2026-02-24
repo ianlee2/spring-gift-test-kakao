@@ -53,25 +53,17 @@ tasks.named('test', Test) {
 	}
 }
 
-// 2) ./gradlew cucumberTest => PostgreSQL + Docker Compose로 Cucumber 실행
+// 2) ./gradlew cucumberTest => Docker (App + PostgreSQL)로 Cucumber 실행
 tasks.register('cucumberTest', Test) {
-	useJUnitPlatform()
-	description = 'Runs Cucumber tests with PostgreSQL'
+	description = 'Runs Cucumber tests with Docker'
 	group = 'verification'
+	useJUnitPlatform()
 	filter {
 		includeTestsMatching 'gift.cucumber.CucumberTest'
 	}
 	systemProperty 'spring.profiles.active', 'test'
-	dependsOn 'dockerComposeUp'
-	finalizedBy 'dockerComposeDown'
-}
-
-tasks.register('dockerComposeUp', Exec) {
-	commandLine 'docker', 'compose', 'up', '-d', '--wait'
-}
-
-tasks.register('dockerComposeDown', Exec) {
-	commandLine 'docker', 'compose', 'down', '-v'
+	dependsOn 'dockerUp'
+	finalizedBy 'dockerDown'
 }
 
 // 3) ./gradlew step1Test => 기존 인수테스트 실행
@@ -84,4 +76,16 @@ tasks.register('step1Test', Test) {
 		includeTestsMatching 'gift.ProductAcceptanceTest'
 		includeTestsMatching 'gift.GiftAcceptanceTest'
 	}
+}
+
+tasks.register('dockerBuild', Exec) {
+	commandLine 'docker', 'compose', 'build'
+}
+
+tasks.register('dockerUp', Exec) {
+	commandLine 'docker', 'compose', 'up', '-d', '--wait'
+}
+
+tasks.register('dockerDown', Exec) {
+	commandLine 'docker', 'compose', 'down', '-v'
 }
